@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Rol {
+  ADMIN
+  OPERADOR
+  CONSULTA
+}
+
+enum EstadoLiquidacion {
+  BORRADOR
+  LIQUIDADA
+  ANULADA
+}
+
+model Usuario {
+  id           Int           @id @default(autoincrement())
+  nombre       String
+  email        String        @unique
+  password     String
+  rol          Rol           @default(OPERADOR)
+  activo       Boolean       @default(true)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  liquidaciones Liquidacion[]
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id          Int      @id @default(autoincrement())
+  nit         String   @unique
+  razonSocial String   @map("razon_social")
+  direccion   String?
+  telefono    String?
+  email       String?
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  liquidaciones Liquidacion[]
+
+  @@map("clientes")
+}
+
+model PartidaArancelaria {
+  id           Int     @id @default(autoincrement())
+  codigo       String  @unique
+  descripcion  String
+  porcentajeGA Decimal @map("porcentaje_ga")
+  unidadMedida String? @map("unidad_medida")
+  activo       Boolean @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+  liquidaciones Liquidacion[]
+
+  @@map("partidas_arancelarias")
+}
+
+model CotizacionUfv {
+  id        Int      @id @default(autoincrement())
+  fecha     DateTime @unique
+  valor     Decimal
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("cotizaciones_ufv")
+}
+
+model Liquidacion {
+  id                     Int                @id @default(autoincrement())
+  clienteId              Int                @map("cliente_id")
+  usuarioId              Int                @map("usuario_id")
+  partidaArancelariaId   Int?               @map("partida_arancelaria_id")
+
+  fobUSD                 Decimal            @map("fob_usd")
+  fleteUSD               Decimal            @map("flete_usd")
+  seguroUSD              Decimal            @map("seguro_usd")
+  otrosGastosUSD         Decimal            @map("otros_gastos_usd")
+  otrosGastosAdBOB       Decimal            @default(0) @map("otros_gastos_aduaneros_bob")
+
+  tipoCambio             Decimal            @default(6.96) @map("tipo_cambio")
+  cifUSD                 Decimal            @map("cif_usd")
+  cifBOB                 Decimal            @map("cif_bob")
+  gaPorcentaje           Decimal            @map("ga_porcentaje")
+  gaBOB                  Decimal            @map("ga_bob")
+  baseImponibleIVA       Decimal            @map("base_imponible_iva")
+  ivaBOB                 Decimal            @map("iva_bob")
+  totalTributosBOB       Decimal            @map("total_tributos_bob")
+
+  estado                 EstadoLiquidacion  @default(BORRADOR)
+  observacion            String?
+  createdAt              DateTime           @default(now()) @map("created_at")
+  updatedAt              DateTime           @updatedAt @map("updated_at")
+
+  cliente Cliente             @relation(fields: [clienteId], references: [id])
+  usuario Usuario             @relation(fields: [usuarioId], references: [id])
+  partida PartidaArancelaria? @relation(fields: [partidaArancelariaId], references: [id])
+
+  @@map("liquidaciones")
+}
